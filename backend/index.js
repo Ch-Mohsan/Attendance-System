@@ -10,6 +10,7 @@ const attendanceRoutes = require('./routes/attendanceRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const IS_VERCEL = Boolean(process.env.VERCEL);
 
 const parseBoolean = (value, defaultValue = false) => {
   if (value === undefined || value === null || value === '') return defaultValue;
@@ -80,6 +81,12 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Internal server error' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-}); 
+// On Vercel, export the app (serverless) and don't bind a port.
+if (!IS_VERCEL && require.main === module) {
+  app.listen(PORT, () => {
+    // eslint-disable-next-line no-console
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+module.exports = app;

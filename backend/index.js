@@ -10,7 +10,11 @@ const attendanceRoutes = require('./routes/attendanceRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const IS_VERCEL = Boolean(process.env.VERCEL);
+const IS_VERCEL = Boolean(
+  process.env.VERCEL ||
+  process.env.VERCEL_ENV ||
+  process.env.VERCEL_URL
+);
 
 const parseBoolean = (value, defaultValue = false) => {
   if (value === undefined || value === null || value === '') return defaultValue;

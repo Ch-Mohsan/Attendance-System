@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from "react";
+import api from "../utils/api";
+import { getApiErrorMessage } from "../utils/apiError";
+import { toastApiPromise, toastError } from "../utils/notify";
 
 export default function Admin() {
   const [teams, setTeams] = useState([]);
@@ -12,63 +15,101 @@ export default function Admin() {
 
   // Fetch all teams
   useEffect(() => {
-    setLoading(true);
-    fetch("http://localhost:5000/api/teams")
-      .then((res) => res.json())
-      .then((data) => {
-        setTeams(data);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError("Failed to fetch teams");
-        setLoading(false);
-      });
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        setLoading(true);
+        const res = await api.get("/teams");
+        if (cancelled) return;
+        setTeams(res.data);
+        setError("");
+      } catch (err) {
+        const message = getApiErrorMessage(err, "Failed to fetch teams");
+        toastError(message);
+        if (!cancelled) setError(message);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Fetch today's attendance summary
   useEffect(() => {
-    setSummaryLoading(true);
-    fetch("http://localhost:5000/api/attendance/summary/today")
-      .then((res) => res.json())
-      .then((data) => {
-        setTodaySummary(data);
-        setSummaryLoading(false);
-      })
-      .catch(() => {
-        setSummaryError("Failed to fetch today's summary");
-        setSummaryLoading(false);
-      });
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        setSummaryLoading(true);
+        const res = await api.get("/attendance/summary/today");
+        if (cancelled) return;
+        setTodaySummary(res.data);
+        setSummaryError("");
+      } catch (err) {
+        const message = getApiErrorMessage(err, "Failed to fetch today's summary");
+        toastError(message);
+        if (!cancelled) setSummaryError(message);
+      } finally {
+        if (!cancelled) setSummaryLoading(false);
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Fetch monthly attendance summary
   useEffect(() => {
     if (!selectedMonth) return;
-    setSummaryLoading(true);
-    fetch(`http://localhost:5000/api/attendance/summary/monthly?month=${selectedMonth}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setMonthlySummary(data);
-        setSummaryLoading(false);
-      })
-      .catch(() => {
-        setSummaryError("Failed to fetch monthly summary");
-        setSummaryLoading(false);
-      });
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        setSummaryLoading(true);
+        const res = await api.get(`/attendance/summary/monthly?month=${selectedMonth}`);
+        if (cancelled) return;
+        setMonthlySummary(res.data);
+        setSummaryError("");
+      } catch (err) {
+        const message = getApiErrorMessage(err, "Failed to fetch monthly summary");
+        toastError(message);
+        if (!cancelled) setSummaryError(message);
+      } finally {
+        if (!cancelled) setSummaryLoading(false);
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
   }, [selectedMonth]);
 
   // Approve member
   const handleApprove = async (teamId, memberId) => {
     try {
-      const res = await fetch(
-        `http://localhost:5000/api/teams/${teamId}/members/${memberId}/approve`,
-        { method: "PATCH" }
+      const res = await toastApiPromise(
+        api.patch(`/teams/${teamId}/members/${memberId}/approve`),
+        {
+          pending: "Approving member...",
+          success: "Member approved",
+        }
       );
-      const updatedTeam = await res.json();
+      const updatedTeam = res.data;
       setTeams((prev) =>
         prev.map((t) => (t._id === updatedTeam._id ? updatedTeam : t))
       );
     } catch (err) {
-      setError("Failed to approve member");
+      const message = getApiErrorMessage(err, "Failed to approve member");
+      toastError(message);
+      setError(message);
     }
   };
 

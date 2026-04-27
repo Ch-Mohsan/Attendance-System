@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import api from "../utils/api";
 import { useUserContext } from "../context/UserContext";
+import { toastApiPromise, toastError, toastSuccess } from "../utils/notify";
+import { getApiErrorMessage } from "../utils/apiError";
 
 export default function Teams() {
   const [teams, setTeams] = useState([]);
@@ -20,7 +22,9 @@ export default function Teams() {
       setError("");
     } catch (err) {
       console.error("Error fetching teams:", err);
-      setError(err.response?.data?.message || "Failed to fetch teams");
+      const message = getApiErrorMessage(err, "Failed to fetch teams");
+      toastError(message);
+      setError(message);
       setTeams([]); // Ensure teams is always an array
     } finally {
       setLoading(false);
@@ -37,11 +41,17 @@ export default function Teams() {
 
     try {
       setLoading(true);
-      await api.post("/teams", teamData);
-      fetchTeams(); // Refresh the teams list
+      await toastApiPromise(api.post("/teams", teamData), {
+        pending: "Creating team...",
+        success: "Team created",
+      });
+      await fetchTeams(); // Refresh the teams list
       e.target.reset(); // Reset the form
+      toastSuccess("Team list updated");
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to create team");
+      const message = getApiErrorMessage(err, "Failed to create team");
+      toastError(message);
+      setError(message);
       setLoading(false);
     }
   };

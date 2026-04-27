@@ -1,5 +1,8 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import api from "../utils/api";
+import { getApiErrorMessage } from "../utils/apiError";
+import { toastApiPromise, toastError } from "../utils/notify";
 
 export default function SignUp() {
   const [form, setForm] = useState({
@@ -33,20 +36,15 @@ export default function SignUp() {
     setErrors(errs);
     if (Object.keys(errs).length === 0) {
       try {
-        const res = await fetch('http://localhost:5000/api/users/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(form),
+        await toastApiPromise(api.post("/users/register", form), {
+          pending: "Creating account...",
+          success: "Account created. Please sign in.",
         });
-        const data = await res.json();
-        if (res.ok) {
-          alert('Sign Up successful!');
-          navigate('/login');
-        } else {
-          setErrors({ api: data.message });
-        }
+        navigate("/login");
       } catch (err) {
-        setErrors({ api: 'Server error' });
+        const message = getApiErrorMessage(err, "Sign up failed");
+        setErrors({ api: message });
+        toastError(message);
       }
     }
   };

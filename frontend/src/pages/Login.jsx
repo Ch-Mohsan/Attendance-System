@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useUserContext } from '../context/UserContext';
+import { toastError, toastSuccess } from '../utils/notify';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -23,11 +24,14 @@ function Login() {
     try {
       const result = await login(email, password);
       if (result.success) {
+        toastSuccess('Signed in successfully');
         navigate('/dashboard');
       } else {
+        toastError(result.error);
         setError(result.error);
       }
     } catch (err) {
+      toastError('An error occurred during login');
       setError('An error occurred during login');
     }
   };

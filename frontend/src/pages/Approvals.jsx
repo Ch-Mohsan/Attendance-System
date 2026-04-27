@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../utils/api";
+import { getApiErrorMessage } from "../utils/apiError";
+import { toastApiPromise, toastError } from "../utils/notify";
 
 export default function Approvals() {
   const [pendingMembers, setPendingMembers] = useState([]);
@@ -39,7 +41,9 @@ export default function Approvals() {
         setLoading(false);
       })
       .catch(() => {
-        setError("Failed to fetch pending approvals");
+        const message = "Failed to fetch pending approvals";
+        toastError(message);
+        setError(message);
         setLoading(false);
       });
   }, []);
@@ -47,20 +51,30 @@ export default function Approvals() {
   // Approve member
   const handleApproveMember = async (teamId, memberId) => {
     try {
-      await api.patch(`/teams/${teamId}/members/${memberId}/approve`);
+      await toastApiPromise(api.patch(`/teams/${teamId}/members/${memberId}/approve`), {
+        pending: "Approving member...",
+        success: "Member approved",
+      });
       setPendingMembers((prev) => prev.filter((m) => m.memberId !== memberId));
     } catch (err) {
-      setError("Failed to approve member");
+      const message = getApiErrorMessage(err, "Failed to approve member");
+      toastError(message);
+      setError(message);
     }
   };
 
   // Approve leader
   const handleApproveLeader = async (userId) => {
     try {
-      await api.patch(`/users/approve-leader/${userId}`);
+      await toastApiPromise(api.patch(`/users/approve-leader/${userId}`), {
+        pending: "Approving leader...",
+        success: "Leader approved",
+      });
       setPendingLeaders((prev) => prev.filter((l) => l._id !== userId));
     } catch (err) {
-      setError("Failed to approve leader");
+      const message = getApiErrorMessage(err, "Failed to approve leader");
+      toastError(message);
+      setError(message);
     }
   };
 

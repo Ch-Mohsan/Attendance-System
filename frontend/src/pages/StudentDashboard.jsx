@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useUserContext } from "../context/UserContext.jsx";
 import api from "../utils/api";
+import { getApiErrorMessage } from "../utils/apiError";
+import { toastApiPromise, toastError, toastSuccess } from "../utils/notify";
 
 export default function StudentDashboard() {
   const { user, setUser } = useUserContext();
@@ -30,7 +32,9 @@ export default function StudentDashboard() {
       setMembers(res.data ? res.data.members : []);
       setLoading(false);
     } catch (err) {
-      setError("Failed to fetch team");
+      const message = getApiErrorMessage(err, "Failed to fetch team");
+      toastError(message);
+      setError(message);
       setLoading(false);
     }
   };
@@ -47,15 +51,23 @@ export default function StudentDashboard() {
       const userRes = await api.get(`/users/find-by-email?email=${encodeURIComponent(form.email)}`);
       const userId = userRes.data.user.id || userRes.data.user._id;
       // Proceed to add member with userId
-      await api.post(`/teams/${team._id}/members`, { ...form, userId });
+      await toastApiPromise(api.post(`/teams/${team._id}/members`, { ...form, userId }), {
+        pending: "Sending member request...",
+        success: "Member request sent for approval",
+      });
       setForm({ name: "", email: "", skill: "" });
       setFormMsg("Member request sent for approval.");
+      toastSuccess("Waiting for leader approval");
       fetchTeam();
     } catch (err) {
       if (err.response && err.response.status === 404) {
-        setFormMsg("User Not Exist, Must Register");
+        const message = "User not found. Please register first.";
+        toastError(message);
+        setFormMsg(message);
       } else {
-        setFormMsg(err.response?.data?.message || "Failed to add member");
+        const message = getApiErrorMessage(err, "Failed to add member");
+        toastError(message);
+        setFormMsg(message);
       }
     }
   };
@@ -68,11 +80,16 @@ export default function StudentDashboard() {
     e.preventDefault();
     setLeaderMsg("");
     try {
-      const res = await api.post("/users/request-leader", leaderForm);
+      await toastApiPromise(api.post("/users/request-leader", leaderForm), {
+        pending: "Submitting leader request...",
+        success: "Leader request submitted",
+      });
       setLeaderMsg("Leader request submitted successfully.");
       setUser((prev) => ({ ...prev, leaderApprovalStatus: "Pending", requestedTeam: leaderForm }));
     } catch (err) {
-      setLeaderMsg(err.response?.data?.message || "Failed to submit leader request");
+      const message = getApiErrorMessage(err, "Failed to submit leader request");
+      toastError(message);
+      setLeaderMsg(message);
     }
   };
 

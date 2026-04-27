@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useUserContext } from "../context/UserContext.jsx";
 import api from "../utils/api";
+import { getApiErrorMessage } from "../utils/apiError";
+import { toastApiPromise, toastError, toastSuccess } from "../utils/notify";
 
 export default function Attendance() {
   const { user } = useUserContext();
@@ -35,6 +37,7 @@ export default function Attendance() {
       setUserMembershipStatus(response.data.status);
     } catch (error) {
       console.error("Failed to fetch membership status:", error);
+      toastError(getApiErrorMessage(error, "Failed to fetch membership status"));
       setUserMembershipStatus("Not Found");
     }
   };
@@ -46,7 +49,8 @@ export default function Attendance() {
       setTeam(res.data);
       setApprovedMembers(res.data ? res.data.members.filter((m) => m.status === "Approved") : []);
       setLoading(false);
-    } catch {
+    } catch (error) {
+      toastError(getApiErrorMessage(error, "Failed to fetch team"));
       setLoading(false);
     }
   };
@@ -59,7 +63,9 @@ export default function Attendance() {
       ]);
       setTodaySummary(todayRes.data);
       setMonthlySummary(monthRes.data);
-    } catch {}
+    } catch (error) {
+      toastError(getApiErrorMessage(error, "Failed to fetch attendance summary"));
+    }
   };
 
   const fetchAdminSummaries = async () => {
@@ -71,7 +77,8 @@ export default function Attendance() {
       setTodaySummary(todayRes.data);
       setMonthlySummary(monthRes.data);
       setLoading(false);
-    } catch {
+    } catch (error) {
+      toastError(getApiErrorMessage(error, "Failed to fetch attendance summary"));
       setLoading(false);
     }
   };
@@ -80,29 +87,40 @@ export default function Attendance() {
     try {
       const res = await api.get("/attendance/today/my");
       setTodayAttendance(res.data);
-    } catch {}
+    } catch (error) {
+      toastError(getApiErrorMessage(error, "Failed to fetch today's attendance"));
+    }
   };
 
   const markAttendance = async (memberId) => {
     try {
-      await api.post("/attendance/mark", {
+      await toastApiPromise(
+        api.post("/attendance/mark", {
         teamId: team._id,
         memberId,
         date: new Date().toISOString(),
         status: "Present"
-      });
+        }),
+        {
+          pending: "Marking attendance...",
+          success: "Attendance marked",
+        }
+      );
+      toastSuccess("Attendance list updated");
       setMsg("Attendance marked!");
       fetchLeaderSummaries();
       fetchTodayAttendance();
-    } catch {
-      setMsg("Failed to mark attendance.");
+    } catch (error) {
+      const message = getApiErrorMessage(error, "Failed to mark attendance");
+      toastError(message);
+      setMsg(message);
     }
   };
 
   if (loading) return <div>Loading...</div>;
 
   // Show message for non-approved members
-  if (!user.isLeader && !user.role === "Owner" && userMembershipStatus !== "Approved") {
+  if (!user.isLeader && user.role !== "Owner" && userMembershipStatus !== "Approved") {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="bg-white rounded-lg shadow p-6 text-center">

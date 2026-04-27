@@ -24,17 +24,61 @@ const defaultDevOrigins = [
   'http://127.0.0.1:3000',
 ];
 
-const allowedOrigins = (process.env.CORS_ORIGINS
+const configuredOrigins = (process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean)
-  : defaultDevOrigins
+  : []
 );
+
+const allowedOrigins = [
+  ...configuredOrigins,
+  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL.trim()] : []),
+  ...defaultDevOrigins,
+].filter(Boolean);
+
+const parseOriginHost = (origin) => {
+  try {
+    return new URL(origin).host;
+  } catch {
+    return null;
+  }
+};
+
+const matchesAllowedOrigin = (origin) => {
+  if (!origin) return true;
+
+  // Escape hatch for debugging (prefer configuring CORS_ORIGINS instead).
+  if (parseBoolean(process.env.CORS_ALLOW_ALL, false)) return true;
+
+  if (allowedOrigins.includes(origin)) return true;
+
+  const originHost = parseOriginHost(origin);
+  if (!originHost) return false;
+
+  // Support wildcard entries like "*.vercel.app" (host matching only).
+  for (const entry of allowedOrigins) {
+    if (!entry) continue;
+    if (entry.startsWith('*.')) {
+      const suffix = entry.slice(2);
+      if (originHost === suffix) continue;
+      if (originHost.endsWith(`.${suffix}`)) return true;
+    }
+  }
+
+  // If deploying on Vercel and no explicit origins are configured,
+  // allow Vercel-hosted frontends by default to avoid refresh/CORS issues.
+  if (IS_VERCEL && configuredOrigins.length === 0 && !process.env.FRONTEND_URL) {
+    if (originHost.endsWith('.vercel.app')) return true;
+  }
+
+  return false;
+};
 
 const corsOptions = {
   origin: (origin, callback) => {
     // Allow non-browser tools (curl/Postman) with no Origin header.
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.includes(origin)) return callback(null, true);
+    if (matchesAllowedOrigin(origin)) return callback(null, true);
 
     return callback(new Error('Not allowed by CORS'));
   },
@@ -51,7 +95,15 @@ app.options(/.*/, cors(corsOptions));
 app.use(express.json());
 
 // Connect to MongoDB
-connectDB();
+connectDB().catch((err) => {
+  // eslint-disable-next-line no-console
+  console.error('MongoDB connection failed:', err);
+
+  // In local dev, fail fast so it's obvious.
+  if (!IS_VERCEL) {
+    process.exit(1);
+  }
+});
 
 // Test route
 app.get('/', (req, res) => {

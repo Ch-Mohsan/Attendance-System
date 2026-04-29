@@ -1,9 +1,5 @@
 @import "tailwindcss";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 @layer utilities {
   .animate-fade-in {
     animation: fadeIn 0.7s ease-in;
@@ -11,5 +7,50 @@
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: none; }
+  }
+
+  /* 3D Pyramid (triangle) loader */
+  .tc-pyramid {
+    width: 64px;
+    height: 64px;
+    position: relative;
+    transform-style: preserve-3d;
+    animation: tcPyramidSpin 1.05s linear infinite;
+  }
+
+  .tc-pyramid-face {
+    position: absolute;
+    inset: 0;
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+    opacity: 0.95;
+    transform-origin: 50% 75%;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.35);
+  }
+
+  @keyframes tcPyramidSpin {
+    0% {
+      transform: rotateX(-18deg) rotateY(20deg);
+    }
+    100% {
+      transform: rotateX(-18deg) rotateY(380deg);
+    }
+  }
+
+  /* React-Toastify theme (black/orange) */
+  .tc-toast {
+    background: #000;
+    color: #fff;
+    border: 1px solid rgba(249, 115, 22, 0.45);
+    border-radius: 14px;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.5);
+  }
+
+  .tc-toast-body {
+    color: #fff;
+    font-weight: 600;
+  }
+
+  .tc-toast-progress {
+    background: #f97316;
   }
 }

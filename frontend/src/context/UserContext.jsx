@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import api from '../utils/api';
+import LoaderOverlay from '../components/LoaderOverlay.jsx';
+import { subscribeToPendingRequests } from '../utils/loadingStore.js';
 
 const UserContext = createContext();
 
@@ -14,6 +16,7 @@ export const useUserContext = () => {
 export function UserProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [pendingRequests, setPendingRequests] = useState(0);
 
   useEffect(() => {
     // Check for token and validate it on mount
@@ -23,6 +26,10 @@ export function UserProvider({ children }) {
     } else {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    return subscribeToPendingRequests(setPendingRequests);
   }, []);
 
   const validateToken = async () => {
@@ -74,8 +81,13 @@ export function UserProvider({ children }) {
   };
 
   if (loading) {
-    return <div>Loading...</div>; // Or your custom loading component
+    return <LoaderOverlay show label="Loading..." />;
   }
 
-  return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
+  return (
+    <UserContext.Provider value={value}>
+      {children}
+      <LoaderOverlay show={pendingRequests > 0} />
+    </UserContext.Provider>
+  );
 } 
